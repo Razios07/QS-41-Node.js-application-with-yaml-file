@@ -1,1 +1,112 @@
 Kubernetes Deployment with Resource Management
+
+#Secret for database connection
+apiVersion: v1
+kind : Secret 
+metadata:
+name : node-api-secret
+type : Opaque
+data :
+database-url: "Url"
+
+#ConfigMap for non-sensitive configuration
+apiVersion : v1
+kind : ConfigMap
+metadata :
+name : nodejs-api-config
+data :
+api-endpoint: "www.api.example.com"
+log-level : "info"
+
+#Deployment for Node.js API
+
+apiVersion: apps/v1
+kind : Deployment
+metadata :
+name : nodejs-api
+labels:
+app: nodejs-api
+template: 
+metadata :
+labels:
+app: nodejs-api
+speec :
+containers:
+-name : nodejs-container
+image : your-dockerhub-user/
+nodejs-api: latest
+ports:
+containerPort : 3000
+resources:
+requests:
+cpu:"200m"
+memory: "256Mi"
+limits:
+cpu: "500m"
+memory: "512Mi"
+readinessProbe:
+httGet:
+pathe /health
+port: 3000
+initialDelaySeconds :5
+periodSecond: 10
+livenessProbe:
+httpGet:
+path: /health
+port: 3000
+initialDelaySeconds :15
+periodSeconds: 20
+env:
+name: DATABASE_URL
+vauFrom:
+secretKeyRef:
+name : nodejs-api-secret
+key: database_url
+name: API_ENDPOINT
+valueFrom:
+configMapRef:
+name:nodejs-api-config
+key: api-endpoint
+name : LOG_LEVEL
+valueFrom:
+configMapKeyRef: 
+name: nodejs-api-config
+key : log-level
+
+#Service for Node.js API
+apiVersion: v1
+kind: Service
+metadata:
+name: nodeks-api-service
+spec:
+selector:
+app: nodejs-api
+type: ClusterIP
+ports:
+port: 80
+targetPort: 3000
+
+#Horizontal Pod Autoscaler
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaling
+metadata:
+name: nodejs-api-hpa
+spec:
+scaleTargetRef:
+apiVersion:app/v1
+kind: Deployment
+name: nodejs-api
+minReplicas: 2
+maxReplicas: 10
+metrics:
+type : Resource
+resource:
+name: cpu
+target:
+type: Utilization
+averageUtilization: 70
+
+
+
+
